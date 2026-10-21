@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>토익스피킹 모의고사</title>
+<style>
+  :root {
+    --navy: #1b2a4a; --navy2: #2c3e66; --line: #c9d1dc; --bg: #eef1f5;
+    --text: #1d232b; --muted: #5d6875; --accent: #1f6feb; --red: #c62828; --panel: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Segoe UI", Arial, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; background: var(--bg); color: var(--text); }
+  button { font: inherit; cursor: pointer; }
+  .hidden { display: none !important; }
+
+  /* ---------- 홈 화면 ---------- */
+  #home { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  #home h1 { font-size: 26px; margin: 8px 0 4px; }
+  #home .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+  .card h2 { font-size: 17px; margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  .row label { min-width: 110px; color: var(--muted); }
+  select, input[type=range] { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; max-width: 100%; }
+  .btn { border: 1px solid var(--line); background: #fff; padding: 8px 14px; border-radius: 6px; color: var(--text); text-decoration: none; display: inline-block; }
+  .btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); padding: 12px 22px; font-size: 17px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .meter { flex: 1; min-width: 160px; height: 14px; background: #e3e7ec; border-radius: 7px; overflow: hidden; }
+  .meter > div { height: 100%; width: 0; background: #2e9e5b; transition: width .08s; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.55; }
+  table.fmt { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.fmt th, table.fmt td { border-bottom: 1px solid var(--line); padding: 6px 4px; text-align: left; }
+
+  /* ---------- 시험 화면 (실제 시험 화면 구성을 참고한 형태) ---------- */
+  #test { display: flex; flex-direction: column; height: 100vh; background: #fff; }
+  .tbar { background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 52px; flex: none; }
+  .tbar .brand { font-weight: 700; letter-spacing: .3px; }
+  .tbar .qinfo { font-weight: 600; }
+  .tbar .tools { display: flex; gap: 8px; }
+  .tbar .tools button { background: var(--navy2); color: #fff; border: 1px solid #4b5f8c; border-radius: 4px; padding: 5px 12px; font-size: 14px; }
+  .subbar { background: #dfe5ee; border-bottom: 1px solid var(--line); padding: 8px 16px; font-weight: 600; color: var(--navy); flex: none; min-height: 38px; }
+  #stage { flex: 1; overflow: auto; padding: 24px 16px; }
+  .inner { max-width: 860px; margin: 0 auto; }
+  .directions { border: 1px solid var(--line); background: #f7f9fc; padding: 18px 20px; font-size: 18px; line-height: 1.6; }
+  .directions b { color: var(--navy); }
+  .readtext { font-size: 21px; line-height: 1.75; border: 1px solid var(--line); padding: 22px 24px; }
+  .picture { text-align: center; }
+  .picture svg, .picture img { width: 100%; max-width: 700px; height: auto; border: 1px solid var(--line); }
+  .context { font-size: 18px; line-height: 1.6; border: 1px solid var(--line); background: #f7f9fc; padding: 14px 18px; margin-bottom: 18px; }
+  .qtext { font-size: 20px; line-height: 1.6; padding: 6px 2px; }
+  .infobox { border: 2px solid var(--navy); max-width: 720px; margin: 0 auto; }
+  .infobox .ititle { background: var(--navy); color: #fff; text-align: center; padding: 10px; font-size: 19px; font-weight: 700; }
+  .infobox .isub { text-align: center; padding: 8px; font-weight: 600; border-bottom: 1px solid var(--line); }
+  .infobox table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  .infobox td { padding: 8px 12px; border-bottom: 1px solid #e3e7ec; vertical-align: top; }
+  .infobox td:first-child { white-space: nowrap; width: 1%; font-weight: 600; }
+  .infobox .inotes { padding: 8px 12px; font-size: 15px; }
+  .caption { margin-top: 16px; padding: 10px 14px; background: #fff8e1; border: 1px dashed #d4b35c; font-size: 17px; }
+  .bottom { flex: none; border-top: 1px solid var(--line); background: #f4f6f9; min-height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; gap: 6px; }
+  .timer { display: flex; align-items: stretch; border: 2px solid var(--navy); border-radius: 4px; overflow: hidden; }
+  .timer .tl { background: var(--navy); color: #fff; padding: 8px 14px; font-weight: 700; font-size: 15px; display: flex; align-items: center; }
+  .timer .tv { background: #fff; padding: 6px 18px; font-family: Consolas, "Courier New", monospace; font-size: 26px; font-weight: 700; min-width: 140px; text-align: center; }
+  .timer.resp .tl { background: var(--red); }
+  .timer.resp { border-color: var(--red); }
+  .status { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .recdot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  /* ---------- 결과 화면 ---------- */
+  #review { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  .rcard { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .rcard h3 { margin: 0 0 8px; font-size: 16px; color: var(--navy); }
+  .rcard .prompt { font-size: 14px; color: var(--text); line-height: 1.55; margin-bottom: 10px; white-space: pre-wrap; }
+  .rcard .thumb svg, .rcard .thumb img { width: 220px; max-width: 100%; height: auto; border: 1px solid var(--line); }
+  .rcard audio { width: 100%; margin: 6px 0; }
+  .analysis { margin-top: 10px; border: 1px solid #c8d6ea; background: #f5f8fd; border-radius: 6px; padding: 10px 12px; font-size: 14px; line-height: 1.6; }
+  .analysis .ah { font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .analysis .tr { font-style: italic; margin-bottom: 4px; }
+  .analysis .miss { color: var(--red); font-weight: 600; }
+  .analysis .ok { color: #2e7d32; font-weight: 600; }
+  .refmark { margin-top: 6px; padding: 8px; background: #fff; border: 1px dashed var(--line); }
+  .levelcard { border: 2px solid var(--navy); }
+  .levelcard table.fmt th, .levelcard table.fmt td:nth-child(-n+3) { white-space: nowrap; }
+  .analysis .scoreline { display: inline-block; margin: 4px 0 6px; padding: 3px 10px; background: var(--navy); color: #fff; border-radius: 4px; font-weight: 700; }
+  table.chk { width: 100%; border-collapse: collapse; margin: 6px 0; background: #fff; font-size: 13px; }
+  table.chk td { border: 1px solid #dde4ee; padding: 5px 7px; vertical-align: top; }
+  table.chk td.st { white-space: nowrap; font-weight: 700; width: 1%; }
+  table.chk td.cl { font-weight: 600; width: 18%; }
+  table.chk td.cc { color: #5b6b82; width: 14%; font-size: 12px; }
+  table.chk td.st.ok { color: #2e7d32; } table.chk td.st.mid { color: #b26a00; } table.chk td.st.bad { color: var(--red); } table.chk td.st.na { color: #5b6b82; }
+  .ah2 { font-weight: 700; color: var(--navy); margin: 8px 0 2px; }
+  ul.tips, ol.tips { margin: 2px 0 6px 20px; padding: 0; } ul.tips li, ol.tips li { margin: 3px 0; }
+  .analysis .tpl { margin-top: 6px; padding: 6px 8px; background: #fffbe8; border: 1px solid #efe2a8; border-radius: 4px; font-size: 13px; }
+  @media (max-width: 640px) { table.chk td.cc { display: none; } }
+  .levelbig { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .lvnum { font-size: 34px; font-weight: 800; color: var(--navy); }
+  .lvrange { font-size: 15px; color: var(--muted); }
+  .lvdesc { font-size: 14px; margin-bottom: 8px; }
+  .credits { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .credits a { color: var(--muted); }
+  .rcard .tip { font-size: 13px; color: var(--muted); background: #f4f6f9; padding: 8px 10px; border-radius: 6px; margin-top: 6px; line-height: 1.5; }
+
+  @media (max-width: 600px) {
+    .tbar .brand { font-size: 14px; } .readtext { font-size: 18px; padding: 14px; } .directions { font-size: 16px; }
+    .timer .tv { font-size: 20px; min-width: 110px; } .timer .tl { font-size: 13px; padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 홈 -->
+<section id="home">
+  <h1>토익스피킹 모의고사</h1>
+  <p class="sub">실제 시험과 같은 순서·준비시간·답변시간으로 진행되고, 내 답변이 녹음되어 시험 후 다시 들을 수 있습니다.</p>
+
+  <div class="card">
+    <h2>1. 시험 선택</h2>
+    <div class="row"><label for="setSel">문항 세트</label><select id="setSel"></select></div>
+    <div class="row"><label for="modeSel">범위</label>
+      <select id="modeSel">
+        <option value="all">전체 모의고사 (11문항, 약 20분)</option>
+        <option value="p1">Q1–2 지문 읽기</option>
+        <option value="p2">Q3–4 사진 묘사</option>
+        <option value="p3">Q5–7 듣고 질문에 답하기</option>
+        <option value="p4">Q8–10 제공된 정보로 답하기</option>
+        <option value="p5">Q11 의견 제시하기</option>
+      </select>
+    </div>
+    <div class="row"><label></label><label style="min-width:0"><input type="checkbox" id="practice"> 연습 모드 (‘다음’ 버튼으로 단계 건너뛰기 허용)</label></div>
+    <div class="row"><label></label><label style="min-width:0"><input type="checkbox" id="captions"> Q8–10 질문을 화면에 자막으로 표시 (실제 시험은 듣기만 함)</label></div>
+    <div class="row"><label></label><label style="min-width:0"><input type="checkbox" id="analyze" checked> 시험 후 내 답변 자동 분석 (Chrome·인터넷 필요. 답변 음성이 Google 음성 인식으로 전송됩니다)</label></div>
+  </div>
+
+  <div class="card">
+    <h2>2. 음성·마이크 점검</h2>
+    <div class="row"><label></label><label style="min-width:0"><input type="checkbox" id="useClips" checked> 사람 목소리에 가까운 녹음 음성 사용 (기본 문항 세트)</label></div>
+    <div class="row"><label for="voiceSel">브라우저 음성</label><select id="voiceSel"></select></div>
+    <p class="note">녹음 음성이 없는 문장(내 자료로 추가한 세트 등)은 브라우저 음성으로 읽습니다.</p>
+    <div class="row"><label for="rate">말하기 속도</label><input type="range" id="rate" min="0.7" max="1.2" step="0.05" value="0.95"><span id="rateVal">0.95</span>
+      <button class="btn" id="btnVoiceTest">목소리 듣기</button></div>
+    <div class="row"><label>마이크</label><button class="btn" id="btnMic">마이크 켜기</button><div class="meter"><div id="meterBar"></div></div></div>
+    <div class="row"><label></label><button class="btn" id="btnRecTest" disabled>5초 녹음 테스트</button><audio id="recTestAudio" controls class="hidden"></audio></div>
+    <p class="note" id="micNote">시험 시작 전에 ‘마이크 켜기’를 눌러 브라우저의 마이크 사용을 허용해 주세요. 소리를 내면 초록색 막대가 움직여야 합니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>3. 시작</h2>
+    <button class="btn primary" id="btnStart">시험 시작</button>
+    <p class="note">시험이 시작되면 안내 음성 → 준비 시간 → ‘삐’ 소리 → 답변 시간 순서로 자동 진행됩니다. 답변 시간에만 녹음됩니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>내 자료로 문항 세트 추가</h2>
+    <p class="note">본인이 합법적으로 받은 자료(문항 텍스트·이미지)를 JSON 파일로 만들어 불러오면 위 ‘문항 세트’에 추가됩니다. 이 브라우저에만 저장됩니다.</p>
+    <div class="row"><input type="file" id="fileImport" accept=".json,application/json"><button class="btn" id="btnTemplate">빈 양식(JSON) 받기</button><button class="btn" id="btnDelSet">선택한 세트 삭제</button></div>
+    <p class="note" id="importNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>시험 구성 (ETS 공식 안내 기준)</h2>
+    <table class="fmt">
+      <tr><th>문항</th><th>유형</th><th>준비</th><th>답변</th></tr>
+      <tr><td>1–2</td><td>Read a text aloud</td><td>45초</td><td>45초</td></tr>
+      <tr><td>3–4</td><td>Describe a picture</td><td>45초</td><td>30초</td></tr>
+      <tr><td>5–7</td><td>Respond to questions</td><td>각 3초</td><td>15 / 15 / 30초</td></tr>
+      <tr><td>8–10</td><td>Respond to questions using information provided</td><td>정보 읽기 45초, 각 3초</td><td>15 / 15 / 30초 (10번은 두 번 들려줌)</td></tr>
+      <tr><td>11</td><td>Express an opinion</td><td>45초</td><td>60초</td></tr>
+    </table>
+    <p class="credits" id="credits"></p>
+    <p class="note">화면 디자인은 실제 시험의 구성(상단 문항 표시, 하단 준비/답변 타이머)을 참고해 만든 것이며, ETS 원본 화면과 픽셀 단위로 같지는 않습니다.</p>
+  </div>
+</section>
+
+<!-- 시험 -->
+<section id="test" class="hidden">
+  <div class="tbar">
+    <div class="brand">TOEIC Speaking</div>
+    <div class="qinfo" id="qinfo"></div>
+    <div class="tools"><button id="btnSkip" class="hidden">다음 ▶</button><button id="btnExit">종료</button></div>
+  </div>
+  <div class="subbar" id="subbar"></div>
+  <div id="stage"><div class="inner" id="stageInner"></div></div>
+  <div class="bottom">
+    <div class="timer hidden" id="timer"><div class="tl" id="timerLabel">PREPARATION TIME</div><div class="tv" id="timerVal">00:00:45</div></div>
+    <div class="status" id="status"></div>
+  </div>
+</section>
+
+<!-- 결과 -->
+<section id="review" class="hidden">
+  <h1 style="font-size:24px">시험 종료 · 내 답변 다시 듣기</h1>
+  <p class="note">각 답변은 이 화면을 벗어나면 사라집니다. 보관하려면 ‘파일로 저장’을 눌러 주세요.</p>
+  <div id="reviewList"></div>
+  <div class="row"><button class="btn primary" id="btnHome">처음 화면으로</button><button class="btn" id="btnRetry">같은 시험 다시 보기</button></div>
+</section>
+
+<script src="photos.js"></script>
+<script src="audio-1.js"></script>
+<script src="audio-2.js"></script>
+<script src="sets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
