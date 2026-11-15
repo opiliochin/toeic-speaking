@@ -82,6 +82,18 @@
   .analysis .ok { color: #2e7d32; font-weight: 600; }
   .refmark { margin-top: 6px; padding: 8px; background: #fff; border: 1px dashed var(--line); }
   .levelcard { border: 2px solid var(--navy); }
+  .fbsum { margin: 6px 0; font-weight: 600; }
+  .fbitem { background: #fff; border: 1px solid #dde4ee; border-left: 4px solid #9aa8bb; border-radius: 6px; padding: 8px 10px; margin: 6px 0; font-size: 13.5px; }
+  .fbitem.ok { border-left-color: #2e7d32; } .fbitem.mid { border-left-color: #e08a00; } .fbitem.bad { border-left-color: var(--red); }
+  .fbh { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 3px; }
+  .fbh .st { font-weight: 700; white-space: nowrap; } .fbh .cl { font-weight: 700; } .fbh .cc { color: #5b6b82; font-size: 12px; }
+  .fbh .st.ok { color: #2e7d32; } .fbh .st.mid { color: #b26a00; } .fbh .st.bad { color: var(--red); } .fbh .st.na, .fbh .st.self, .fbh .st.wait { color: #5b6b82; }
+  .fbl { margin: 2px 0; } .fbl b { color: #3a4a60; } .fbl.good b { color: #2e7d32; } .fbl.fix b { color: var(--red); } .fbl.drill b { color: #b26a00; }
+  .selfbtns { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .selfbtns .btn { padding: 4px 10px; font-size: 13px; }
+  .selfbtns .btn.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  ul.gerr { margin: 4px 0 0 18px; padding: 0; } ul.gerr li { margin: 2px 0; }
+  table.chk td.st.self, table.chk td.st.wait { color: #5b6b82; }
   .levelcard table.fmt th, .levelcard table.fmt td:nth-child(-n+3) { white-space: nowrap; }
   .analysis .scoreline { display: inline-block; margin: 4px 0 6px; padding: 3px 10px; background: var(--navy); color: #fff; border-radius: 4px; font-weight: 700; }
   table.chk { width: 100%; border-collapse: collapse; margin: 6px 0; background: #fff; font-size: 13px; }
@@ -135,6 +147,8 @@
 
   <div class="card">
     <h2>2. 음성·마이크 점검</h2>
+    <div class="row"><label for="recMode">답변 기록 방식</label><select id="recMode"><option value="both">녹음 + 음성 인식 (PC·아이폰)</option><option value="sr">음성 인식만 · 녹음 안 함 (갤럭시 등 안드로이드 권장)</option></select></div>
+    <div class="row"><label for="gramMode">문법 평가</label><select id="gramMode"><option value="auto" selected>자동 문법 검사 (LanguageTool, 인터넷 필요 · 답변 글자가 LanguageTool 서버로 전송)</option><option value="self">자가 채점 (녹음을 듣고 직접 ✓/△/✗ 선택)</option></select></div>
     <div class="row"><label></label><label style="min-width:0"><input type="checkbox" id="useClips" checked> 사람 목소리에 가까운 녹음 음성 사용 (기본 문항 세트)</label></div>
     <div class="row"><label for="voiceSel">브라우저 음성</label><select id="voiceSel"></select></div>
     <p class="note">녹음 음성이 없는 문장(내 자료로 추가한 세트 등)은 브라우저 음성으로 읽습니다.</p>

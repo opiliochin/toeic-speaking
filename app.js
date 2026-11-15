@@ -192,6 +192,10 @@
   function setStatus(html) { $('status').innerHTML = html || ''; }
 
   // ---------- 녹음 ----------
+  // 안드로이드 Chrome에서는 녹음(getUserMedia)과 음성 인식이 동시에 마이크를 쓰면 인식 결과가 비는 사례가 보고됨
+  // (공식 문서로 확인된 동작은 아님). 그래서 '인식만' 모드를 두고 안드로이드에서는 기본으로 고름.
+  function recMode() { var e = $('recMode'); return e ? e.value : 'both'; }
+  function releaseMic() { stopMeter(); if (micStream) { micStream.getTracks().forEach(function (tk) { tk.stop(); }); micStream = null; } }
   async function getMic() {
     if (micStream) return micStream;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('이 브라우저는 마이크 녹음을 지원하지 않습니다.');
@@ -203,6 +207,19 @@
     if (!window.MediaRecorder) return null;
     for (var i = 0; i < c.length; i++) if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c[i])) return c[i];
     return '';
+  }
+  // 녹음 파일에 목소리 크기의 소리가 있는지 확인 (실패하면 판단 보류 = false)
+  async function hasVoice(blob) {
+    try {
+      var ctx = ensureAudioCtx(); if (!ctx || !blob || !blob.size) return false;
+      var buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+      var d = buf.getChannelData(0), win = Math.floor(buf.sampleRate * 0.05), loud = 0;
+      for (var i = 0; i + win <= d.length; i += win) {
+        var s = 0; for (var k = i; k < i + win; k++) s += d[k] * d[k];
+        if (Math.sqrt(s / win) > 0.01) loud++;
+      }
+      return loud * 0.05 >= 1; // 일정 크기 이상의 소리가 1초 이상 (기준값은 자체 설정)
+    } catch (e) { return false; }
   }
   function startRecording() {
     if (!micStream || !window.MediaRecorder) return null;
@@ -252,9 +269,9 @@
     };
   }
   async function respond(qnum, sec) {
-    var r = startRecording();
+    var r = recMode() === 'sr' ? null : startRecording();
     var sr = startRecognition();
-    setStatus(r ? '<span class="recdot"></span> 녹음 중' : '마이크가 꺼져 있어 녹음되지 않습니다');
+    setStatus(r ? '<span class="recdot"></span> 녹음 중' : recMode() === 'sr' ? '<span class="recdot"></span> 음성 인식 중 (녹음 안 함)' : '마이크가 꺼져 있어 녹음되지 않습니다');
     try { await countdown(sec, 'resp'); }
     finally {
       if (r) {
@@ -401,13 +418,15 @@
     ensureAudioCtx();
     unlockAudio();
     stopMeter();
-    if (!micStream) { try { await getMic(); } catch (e) { /* 녹음 없이 진행 */ } }
+    if (recMode() === 'sr') releaseMic();
+    else if (!micStream) { try { await getMic(); } catch (e) { /* 녹음 없이 진행 */ } }
     lastRun = { set: s, mode: mode };
     session = { aborted: false, skip: null, skipped: false, recordings: {}, transcripts: {} };
     $('btnSkip').classList.toggle('hidden', !$('practice').checked);
     show('test');
     try {
-      if (!micStream) { setStatus('마이크를 사용할 수 없어 녹음 없이 진행합니다'); }
+      if (recMode() === 'sr') setStatus('음성 인식만 사용 중 (녹음·다시 듣기 없음)');
+      else if (!micStream) { setStatus('마이크를 사용할 수 없어 녹음 없이 진행합니다'); }
       header('', 'TOEIC Speaking Test');
       stage([el('div', 'directions', 'TOEIC Speaking Test — ' + (mode === 'all' ? '11 questions. ' : 'Practice. ') + 'Listen to the directions. Answer only after you hear the beep. Your answers will be recorded.')]);
       await speak('TOEIC Speaking Test.');
@@ -456,9 +475,15 @@
     hideTimer(); stage([el('div', 'directions', '답변을 정리하는 중입니다...')]);
     var trs = {}, qs = Object.keys(session.transcripts);
     for (var i = 0; i < qs.length; i++) trs[qs[i]] = await session.transcripts[qs[i]];
+    // 인식 결과가 비었는데 녹음에는 목소리가 있으면 '무응답'이 아니라 '인식 실패'로 처리
+    for (var j = 0; j < qs.length; j++) {
+      var q = qs[j], tr0 = trs[q];
+      if (tr0 && !tr0.text && !tr0.error && session.recordings[q] && await hasVoice(session.recordings[q])) trs[q] = { text: '', error: 'recog-empty' };
+    }
     var shownTip = {}, metas = qMeta(s, keys), rows = [];
     metas.forEach(function (m) { if (trs[m.q]) rows.push(analyze(m, s, trs[m.q])); });
-    list.appendChild(reportTop(rows, keys));
+    var top = reportTop(rows, keys); list.appendChild(top);
+    reportRefresh = function () { var nt = reportTop(rows, keys); list.replaceChild(nt, top); top = nt; };
     metas.forEach(function (m, idx) {
       var c = el('div', 'rcard');
       c.appendChild(el('h3', '', 'Question ' + m.q + ' · ' + m.task));
@@ -472,7 +497,7 @@
         var ext = /mp4/.test(b.type) ? 'm4a' : /ogg/.test(b.type) ? 'ogg' : 'webm';
         dl.download = 'TOEIC-Speaking-Q' + m.q + '.' + ext; dl.textContent = '파일로 저장';
         c.appendChild(dl);
-      } else c.appendChild(el('div', 'note', '녹음된 답변이 없습니다 (마이크 꺼짐 또는 건너뜀).'));
+      } else c.appendChild(el('div', 'note', recMode() === 'sr' ? '‘음성 인식만’ 모드라 녹음하지 않았습니다.' : '녹음된 답변이 없습니다 (마이크 꺼짐 또는 건너뜀).'));
       var an = rows.filter(function (r) { return r.q === m.q; })[0];
       if (an) c.appendChild(an.node);
       if (!shownTip[m.part]) { shownTip[m.part] = 1; c.appendChild(el('div', 'tip', '점검 포인트: ' + TIPS[m.part])); }
@@ -480,6 +505,7 @@
     });
     session = null;
     show('review');
+    runGrammar(rows, reportRefresh);
   }
 
   // ---------- 자동 분석 (참고용, ETS 공식 점수 아님) ----------
@@ -492,7 +518,8 @@
     'not-allowed': '음성 인식 권한이 거부되었습니다.',
     'service-not-allowed': '이 브라우저에서 음성 인식 서비스를 사용할 수 없습니다. Chrome에서 열어 주세요.',
     'audio-capture': '마이크를 음성 인식에 사용할 수 없었습니다.',
-    'start-failed': '음성 인식을 시작하지 못했습니다.'
+    'start-failed': '음성 인식을 시작하지 못했습니다.',
+    'recog-empty': '녹음에는 목소리가 있는데 음성 인식 결과가 비어 있습니다. 무응답이 아니라 인식 실패라서 점수에서 뺐습니다. 안드로이드 폰에서는 녹음과 음성 인식을 동시에 하면 인식이 안 되는 경우가 있으니, 첫 화면 ‘답변 기록 방식’을 ‘음성 인식만’으로 바꿔 다시 해 보세요.'
   };
   // 음성 인식은 숫자를 '20%'처럼 쓰므로 0~99는 영어 단어로 바꿔 지문(twenty percent)과 비교
   var ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
@@ -535,7 +562,7 @@
     p4: '표에서 찾은 정보를 단어로만 말하지 말고 완전한 문장으로 말하세요(예: “The meeting starts at 9 a.m. in Room 302.”).',
     p5: '60초를 채우려면 이유 2개와 그중 하나에 대한 구체적인 경험 예시가 필요합니다. 준비 시간 45초에 이유 2개와 예시 1개를 키워드로 정해 두세요.'
   };
-  function addCheck(list, crit, label, status, detail, tip) { list.push({ crit: crit, label: label, status: status, detail: detail, tip: tip || '' }); }
+  function addCheck(list, crit, label, status, detail, tip) { var c = { crit: crit, label: label, status: status, detail: detail, tip: tip || '' }; list.push(c); return c; }
   function qtyCheck(list, r, part) {
     var t = wordTarget(r.sec), ratio = r.wc / t;
     r.qtyRatio = ratio;
@@ -680,42 +707,166 @@
     }
 
     if (m.part !== 'p1') {
-      addCheck(L, '문법', '문법 정확성', 'na', '프로그램이 판단할 수 없습니다. 녹음을 들으며 확인하세요: 시제(과거 경험은 과거형), 3인칭 단수 -s(He works), 관사(a/the), 복수형(two people), 주어-동사 빠짐 없음.', '');
+      if (gramMode() === 'auto') {
+        var gc = addCheck(L, '문법', '문법 정확성 (자동 검사)', 'wait', '문법 검사 중입니다...', '');
+        gc.gram = true;
+      } else selfCheck(addCheck(L, '문법', '문법 정확성 (자가 채점)', 'self', GRAM_SELF, ''));
       addCheck(L, '발음', '발음·억양·전달', 'na', '프로그램이 판단할 수 없습니다. 녹음을 들으며 확인하세요: 긴 멈춤이나 “um, uh”가 잦은지, 문장 끝을 흐리지 않는지, 핵심 단어에 힘을 주는지.', '');
     }
-
-    // 추정 점수: 판단 가능한 점검 결과의 평균으로 계산 (자체 기준)
-    var sc = L.filter(function (c) { return c.status !== 'na'; }).map(function (c) { return c.status === 'ok' ? 1 : c.status === 'mid' ? 0.5 : 0; });
+    r.text = tr.text; r.m = m; r.set = s;
+    r.body = el('div'); box.appendChild(r.body);
+    renderResult(r);
+    return r;
+  }
+  var GRAM_SELF = '녹음을 듣고 아래 버튼으로 직접 골라 주세요. 점검할 것: 시제(과거 경험은 과거형), 3인칭 단수 -s(He works), 관사(a/the), 복수형(two people), 주어·동사 빠짐 없음.';
+  var SELF_TIP = {
+    ok: '',
+    mid: '녹음에서 틀린 문장을 찾아 바르게 고쳐 3번 소리 내어 말해 보세요. 자주 틀리는 것: 3인칭 단수 -s, 과거형, 관사(a/the), 복수형 -s.',
+    bad: '문법이 자주 틀리면 짧고 정확한 문장이 더 유리합니다. 답변 틀(아래)의 문장을 그대로 외워 쓰고, 녹음해서 틀린 곳을 고치는 연습을 반복하세요.'
+  };
+  function gramMode() { var g = $('gramMode'); return g ? g.value : 'auto'; }
+  function selfCheck(c) { c.self = true; c.status = 'self'; c.detail = c.detail || GRAM_SELF; return c; }
+  function scoreOf(r) {
+    var sc = r.checks.filter(function (c) { return c.status === 'ok' || c.status === 'mid' || c.status === 'bad'; })
+      .map(function (c) { return c.status === 'ok' ? 1 : c.status === 'mid' ? 0.5 : 0; });
     var f = sc.length ? sc.reduce(function (a, b) { return a + b; }, 0) / sc.length : 0;
     r.frac = f;
-    r.score = Math.max(1, Math.round(f * r.max));
+    var score = Math.max(1, Math.round(f * r.max));
     // 답이 아주 짧으면 다른 항목이 좋아도 높은 점수를 줄 수 없도록 상한 적용 (자체 기준)
     if (r.qtyRatio != null) {
-      if (r.qtyRatio < 0.3) r.score = Math.min(r.score, 1);
-      else if (r.qtyRatio < 0.6) r.score = Math.min(r.score, Math.ceil(r.max / 2));
+      if (r.qtyRatio < 0.3) score = Math.min(score, 1);
+      else if (r.qtyRatio < 0.6) score = Math.min(score, Math.ceil(r.max / 2));
     }
-
-    box.appendChild(el('div', 'scoreline', '추정 점수: ' + r.score + ' / ' + r.max));
-    box.appendChild(el('div', 'tr', '인식된 내 답변: “' + tr.text + '”'));
-    var tb = document.createElement('table'); tb.className = 'chk';
+    return score;
+  }
+  // 항목별 해설: 왜 중요한지(ETS 평가 항목과 연결) · 잘했을 때 · 연습법. 연습법은 자체 제안입니다.
+  var FB = [
+    ['발음 명료성', { why: 'ETS는 Q1–2를 “단어·문장 강세를 포함한 전반적인 알아듣기 쉬움(intelligibility)”으로 채점합니다. 기계가 못 알아들은 단어는 채점관도 알아듣기 어려웠을 가능성이 있습니다.', good: '대부분의 단어가 정확히 인식될 만큼 또렷하게 읽었습니다.', drill: '빨간 단어만 따로 모아 사전 발음 듣기 → 따라 하기 3번 → 그 단어가 든 문장 전체를 다시 읽고 녹음해서 비교하세요.' }],
+    ['끝까지 읽기', { why: '읽지 못한 부분은 평가할 내용이 없어 점수를 받을 수 없습니다. 45초는 보통 속도로 읽으면 충분한 시간입니다.', good: '시간 안에 지문을 끝까지 읽었습니다.', drill: '타이머를 45초로 맞추고 소리 내어 읽는 연습을 하세요. 40초 안에 끝나는 속도가 안전합니다.' }],
+    ['억양·강세', { why: 'ETS는 억양·강세를 “강조, 쉼, 올리고 내리는 음높이를 쓰는 능력”으로 정의합니다. 같은 발음이라도 단조롭게 읽으면 이 항목에서 낮게 평가될 수 있습니다.', good: '', drill: '지문에 쉼표(/)·끊어 읽기(//)·강조할 단어(밑줄)를 표시하고 그대로 읽어 녹음하세요. 원어민 뉴스나 광고 문장을 따라 읽는 쉐도잉도 효과적입니다.' }],
+    ['말한 분량', { why: '답변 시간을 거의 비워 두면 ETS가 보는 “내용 완성도”와 “전달(delivery)” 모두에서 보여 줄 것이 줄어듭니다.', good: '답변 시간에 맞는 분량을 말했습니다.', drill: '같은 질문으로 3번 연속 답해 보세요. 1번째는 그냥, 2번째는 이유를 하나 더, 3번째는 예시를 하나 더 붙여서 말합니다.' }],
+    ['도입 문장', { why: '첫 문장으로 장소를 소개하면 이후 묘사가 하나의 흐름으로 이어져 ‘일관성(cohesion)’이 좋아집니다.', good: '장소를 소개하는 문장으로 시작했습니다.', drill: '사진을 볼 때마다 첫 3초 안에 “This picture was taken at/in ___.”를 말하는 습관을 들이세요.' }],
+    ['현재진행형', { why: '사진 속 사람의 동작은 현재진행형으로 말하는 것이 문법적으로 자연스럽고, ETS가 보는 ‘문법’ 항목에서 정확성을 보여 줄 수 있습니다.', good: '사람의 동작을 현재진행형으로 묘사했습니다.', drill: '사진 속 사람 3명을 골라 “A man is ___ing ___.” 문장을 하나씩 만들어 말해 보세요.' }],
+    ['위치 표현', { why: '위치 표현은 사진 속 대상들을 연결해 듣는 사람이 그림을 떠올리게 해 주므로 ‘어휘’와 ‘일관성’에 함께 도움이 됩니다.', good: '위치 표현으로 대상을 연결했습니다.', drill: 'on the left / on the right / in the middle / in the background / next to 다섯 개를 한 사진에 모두 써서 말해 보세요.' }],
+    ['사람 묘사', { why: 'TOEIC 사진 문항은 대부분 사람이 무언가 하는 장면이라, 사람을 빼면 사진의 핵심 내용(관련성)을 놓치게 됩니다.', good: '사람을 묘사했습니다.', drill: '사람 한 명당 동작 → 옷차림 → 표정 순서로 세 문장씩 말하는 연습을 하세요.' }],
+    ['어휘 다양성', { why: 'ETS는 Q3부터 ‘어휘’를 평가합니다. 같은 단어만 반복하면 표현 범위가 좁게 들립니다.', good: '다양한 단어를 사용했습니다.', drill: '자주 쓰는 단어(good, nice, many, busy)마다 바꿔 쓸 표현 2개씩을 정리해 외우세요.' }],
+    ['질문과의 관련성', { why: 'ETS는 Q5부터 ‘내용 관련성’을 평가합니다. 질문의 단어를 그대로 써서 답하면 질문에 정확히 답하고 있다는 것이 분명해집니다.', good: '질문의 핵심 단어를 사용해 질문에 맞게 답했습니다.', drill: '질문을 듣자마자 주어만 I로 바꿔 첫 문장을 만드는 연습을 하세요(아래 ‘첫 문장 예시’ 참고).' }],
+    ['이유 말하기', { why: 'Why가 들어간 질문에 이유를 빼면 질문의 절반에만 답한 것이라 ‘내용 완성도’가 떨어집니다.', good: '질문이 요구한 이유를 말했습니다.', drill: '모든 의견 문장 뒤에 “because ___”를 자동으로 붙이는 연습을 하세요.' }],
+    ['시간·빈도 표현', { why: 'how often / how long / when 질문은 구체적인 시간을 말해야 질문에 완전히 답한 것이 됩니다.', good: '시간·빈도를 구체적으로 말했습니다.', drill: 'once a week / twice a month / every day / about 30 minutes / last weekend를 문장에 넣어 말해 보세요.' }],
+    ['두 가지를 묻는 질문', { why: '두 가지를 묻는 질문에서 하나만 답하면 ‘내용 완성도’가 떨어집니다.', good: '', drill: '질문을 들을 때 손가락으로 물음의 개수를 세고, 답할 때 그 순서대로 하나씩 답하세요.' }],
+    ['표의 핵심 정보', { why: 'Q8–10은 표의 정보를 정확히 전달하는 것이 핵심인 ‘내용 관련성·완성도’ 과제입니다. 정보 하나가 빠지면 답이 불완전해집니다.', good: '질문이 요구한 정보를 모두 말했습니다.', drill: '질문이 나오기 전 45초 동안 날짜·시간·장소·사람 이름·가격에 표시하고, 질문의 의문사(where/when/who)에 맞는 칸을 바로 찾는 연습을 하세요.' }],
+    ['완전한 문장', { why: '단어만 나열하면 정보는 맞아도 ‘문법’과 ‘일관성’을 보여 줄 수 없습니다.', good: '정보를 완전한 문장으로 말했습니다.', drill: '“It will be held at ___, and it starts at ___.” 같은 고정 문장 틀을 3개 외워 두고 정보만 바꿔 끼우세요.' }],
+    ['잘못된 정보 정정', { why: '상대가 잘못 알고 있는 정보를 바로잡는 것이 이 문항의 과제입니다. 정정하지 않고 정보만 말하면 과제를 반만 수행한 것입니다.', good: '잘못된 정보를 먼저 정정했습니다.', drill: '“Actually, that’s not correct. / I’m sorry, but ___.”로 시작해 올바른 정보를 말하는 연습을 하세요.' }],
+    ['정보 정리 표현', { why: '여러 정보를 말할 때 개수를 먼저 말하고 순서대로 정리하면 듣는 사람이 따라가기 쉬워 ‘일관성’이 좋아집니다.', good: '정보를 순서대로 정리해 말했습니다.', drill: '“There are two ___. First, ___. Second, ___.” 틀로 표의 항목을 말해 보세요.' }],
+    ['입장 밝히기', { why: 'Q11은 의견을 말하는 과제라, 입장이 분명하지 않으면 이후 이유와 예시가 무엇을 뒷받침하는지 알 수 없습니다.', good: '첫 부분에서 입장을 분명히 밝혔습니다.', drill: '찬반 질문을 보면 5초 안에 한쪽을 고르세요. 어느 쪽이 더 맞는지보다 이유를 말하기 쉬운 쪽이 유리합니다.' }],
+    ['이유 제시', { why: 'ETS 레벨 설명에서 높은 레벨과 낮은 레벨을 가르는 기준 중 하나가 의견을 이유로 뒷받침하는지입니다.', good: '이유를 들어 의견을 뒷받침했습니다.', drill: '자주 나오는 주제(일·공부·여가)마다 쓸 수 있는 이유 3개(시간 절약, 돈 절약, 건강·스트레스)를 미리 정해 두세요.' }],
+    ['구체적 예시', { why: '예시는 이유를 설득력 있게 만들고, 60초를 채우는 데 가장 효과적인 방법입니다.', good: '구체적인 예시를 들었습니다.', drill: '“For example, when I ___, I ___.” 형식으로 내 경험 3가지(회사·학교·여행)를 미리 준비해 두고 여러 주제에 돌려 쓰세요.' }],
+    ['마무리 문장', { why: '마지막에 입장을 다시 말하면 답변 전체가 하나로 묶여 ‘일관성’이 좋아집니다.', good: '입장을 다시 말하며 마무리했습니다.', drill: '답변 시간이 10초 남으면 무조건 “That’s why I think ___.”로 끝내는 습관을 들이세요.' }],
+    ['연결어 사용', { why: '연결어는 문장 사이의 관계(이유·예시·대조)를 보여 줘서 ‘일관성’ 평가에 직접 도움이 됩니다.', good: '연결어를 충분히 사용했습니다.', drill: 'first, second, for example, in addition, however, that’s why를 카드에 적어 두고, 답할 때마다 4개 이상 쓰는 연습을 하세요.' }],
+    ['문법 정확성', { why: 'ETS는 Q3부터 문법을 “범위와 정확성”으로 평가합니다. 같은 실수가 반복되면 의미 전달에도 영향을 줍니다.', good: '자동 검사에서 문법 지적이 거의 없었습니다.', drill: '지적된 문장을 바르게 고쳐 3번 소리 내어 말하고, 자주 나온 실수(3인칭 -s, 과거형, 관사, 복수형)를 메모해 다음 시험에서 그것만 집중해 확인하세요.' }],
+    ['발음·억양·전달', { why: 'ETS는 Q3 이후에도 발음·억양을 계속 평가하고, 전달(delivery)을 “분명하고 매끄러우며 끝까지 일관되게 알아듣기 쉬운지”로 봅니다.', good: '', drill: '녹음을 들으며 2초 넘게 멈춘 곳과 “um, uh”를 세어 보세요. 다음 연습에서 그 숫자를 절반으로 줄이는 것을 목표로 하세요.' }]
+  ];
+  function fbFor(label) { for (var i = 0; i < FB.length; i++) if (label.indexOf(FB[i][0]) === 0) return FB[i][1]; return {}; }
+  function fbLine(parent, head, text, cls) {
+    if (!text) return;
+    var p = el('div', 'fbl' + (cls ? ' ' + cls : '')); p.appendChild(el('b', '', head + ' ')); p.appendChild(document.createTextNode(text)); parent.appendChild(p);
+  }
+  var ST_LABEL = { ok: '✓ 좋음', mid: '△ 보통', bad: '✗ 부족', na: '◇ 직접 확인', self: '◇ 자가 채점', wait: '… 검사 중' };
+  var reportRefresh = null;
+  function renderResult(r) {
+    var L = r.checks, b = r.body;
+    r.score = scoreOf(r);
+    b.innerHTML = '';
+    b.appendChild(el('div', 'scoreline', '추정 점수: ' + r.score + ' / ' + r.max));
+    b.appendChild(el('div', 'tr', '인식된 내 답변: “' + r.text + '”'));
+    var weak = L.filter(function (c) { return c.status === 'bad' || c.status === 'mid'; }).length;
+    var good = L.filter(function (c) { return c.status === 'ok'; }).length;
+    b.appendChild(el('div', 'fbsum', '잘한 항목 ' + good + '개 · 보완할 항목 ' + weak + '개' + (weak ? ' (빨간색·주황색 항목부터 보세요)' : '')));
     L.forEach(function (c) {
-      var row = document.createElement('tr');
-      row.appendChild(el('td', 'st ' + c.status, { ok: '✓ 좋음', mid: '△ 보통', bad: '✗ 부족', na: '◇ 직접 확인' }[c.status]));
-      row.appendChild(el('td', 'cl', c.label));
-      row.appendChild(el('td', 'cc', c.crit));
-      row.appendChild(el('td', '', c.detail));
-      tb.appendChild(row);
+      var f = fbFor(c.label), it = el('div', 'fbitem ' + c.status);
+      var hd = el('div', 'fbh'); hd.appendChild(el('span', 'st ' + c.status, ST_LABEL[c.status])); hd.appendChild(el('span', 'cl', c.label)); hd.appendChild(el('span', 'cc', 'ETS 항목: ' + c.crit));
+      it.appendChild(hd);
+      fbLine(it, '결과', c.detail);
+      if (c.errs && c.errs.length) {
+        var ul = document.createElement('ul'); ul.className = 'gerr';
+        c.errs.forEach(function (x) {
+          var li = el('li'); li.appendChild(el('b', '', '“' + x.bad + '”'));
+          li.appendChild(document.createTextNode((x.fix ? ' → “' + x.fix + '”' : '') + ' · ' + x.msg));
+          ul.appendChild(li);
+        });
+        it.appendChild(ul);
+      }
+      if (c.self) {
+        var bx = el('div', 'selfbtns');
+        [['ok', '✓ 좋음'], ['mid', '△ 보통'], ['bad', '✗ 부족']].forEach(function (o) {
+          var btn = el('button', 'btn' + (c.status === o[0] ? ' on' : ''), o[1]);
+          btn.type = 'button';
+          btn.onclick = function () { c.status = o[0]; c.tip = SELF_TIP[o[0]]; renderResult(r); if (reportRefresh) reportRefresh(); };
+          bx.appendChild(btn);
+        });
+        it.appendChild(bx);
+      }
+      fbLine(it, '왜 중요한가', f.why);
+      if (c.status === 'ok') fbLine(it, '잘한 점', f.good, 'good');
+      if (c.tip && c.status !== 'ok') fbLine(it, '고치는 법', c.tip, 'fix');
+      if (c.status !== 'ok') fbLine(it, '연습법', f.drill, 'drill');
+      b.appendChild(it);
     });
-    box.appendChild(tb);
-    var tips = L.filter(function (c) { return c.tip; });
-    if (tips.length) {
-      box.appendChild(el('div', 'ah2', '점수를 올리려면'));
-      var ul = document.createElement('ul'); ul.className = 'tips';
-      tips.forEach(function (c) { ul.appendChild(el('li', '', c.tip)); });
-      box.appendChild(ul);
-    } else box.appendChild(el('div', 'ok', '프로그램이 확인할 수 있는 항목은 모두 좋았습니다. ‘직접 확인’ 항목을 녹음으로 점검해 보세요.'));
-    if (TEMPLATES[m.part]) box.appendChild(el('div', 'tpl', '답변 틀: ' + TEMPLATES[m.part]));
-    return r;
+    if (!weak) b.appendChild(el('div', 'ok', '프로그램이 확인할 수 있는 항목은 모두 좋았습니다. ‘직접 확인’ 항목을 녹음으로 점검해 보세요.'));
+    var m = r.m || {}, s0 = r.set;
+    if (s0 && r.part === 'p3' && s0.q5_7 && s0.q5_7.starters && s0.q5_7.starters[r.q - 5]) b.appendChild(el('div', 'tpl', '이렇게 답해 볼 수 있습니다 (예시): ' + s0.q5_7.starters[r.q - 5]));
+    if (s0 && r.part === 'p4' && s0.q8_10 && s0.q8_10.models && s0.q8_10.models[r.q - 8]) b.appendChild(el('div', 'tpl', '모범 답안 예시 (표의 정보 기준): ' + s0.q8_10.models[r.q - 8]));
+    if (TEMPLATES[r.part]) b.appendChild(el('div', 'tpl', '답변 틀: ' + TEMPLATES[r.part]));
+  }
+
+  // ---------- 자동 문법 검사 (LanguageTool 공개 API) ----------
+  // https://dev.languagetool.org/public-http-api : POST /v2/check, IP당 분당 20회·75KB, 요청당 20KB.
+  // 시험 한 번에 모든 답변을 묶어 1회만 요청. 음성 인식 결과에는 대문자·문장부호가 없으므로
+  // 철자·대소문자·문장부호·문체 항목은 빼고 문법 관련 지적만 셉니다.
+  var LT_URL = 'https://api.languagetool.org/v2/check';
+  var LT_SKIP = /TYPO|CASING|PUNCTUATION|TYPOGRAPHY|STYLE|WHITESPACE|REDUNDANCY|PLAIN_ENGLISH|WIKIPEDIA/;
+  function gramUsable(mt) {
+    var cat = (mt.rule && mt.rule.category && mt.rule.category.id) || '', it = (mt.rule && mt.rule.issueType) || '';
+    return !LT_SKIP.test(cat) && !/misspelling|typographical|whitespace|style|register/.test(it);
+  }
+  function gramFail(rows, why, refresh) {
+    rows.forEach(function (r) {
+      (r.checks || []).forEach(function (c) {
+        if (c.gram && c.status === 'wait') { c.label = '문법 정확성 (자가 채점)'; selfCheck(c); c.detail = '자동 문법 검사를 하지 못했습니다(' + why + '). ' + GRAM_SELF; }
+      });
+      if (r.body) renderResult(r);
+    });
+    if (refresh) refresh();
+  }
+  async function runGrammar(rows, refresh) {
+    var todo = rows.filter(function (r) { return (r.checks || []).some(function (c) { return c.gram && c.status === 'wait'; }); });
+    if (!todo.length) return;
+    var text = '', segs = [];
+    todo.forEach(function (r) { var t = r.text.trim(); segs.push({ r: r, from: text.length, to: text.length + t.length }); text += t + '\n\n'; });
+    var res;
+    try {
+      var ctl = new AbortController(), tm = setTimeout(function () { ctl.abort(); }, 20000);
+      var resp = await fetch(LT_URL, { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ text: text, language: 'en-US', motherTongue: 'ko' }).toString() });
+      clearTimeout(tm);
+      if (!resp.ok) throw new Error(resp.status === 429 ? '요청이 너무 많음, 잠시 후 다시' : '서버 응답 ' + resp.status);
+      res = await resp.json();
+    } catch (e) { gramFail(todo, e && e.name === 'AbortError' ? '응답 시간 초과' : (e && e.message && /^서버|요청/.test(e.message) ? e.message : '인터넷 연결 또는 서버 접속 실패'), refresh); return; }
+    todo.forEach(function (sg, i) {
+      var seg = segs[i], r = seg.r, c = r.checks.filter(function (x) { return x.gram; })[0];
+      var errs = (res.matches || []).filter(function (mt) { return mt.offset >= seg.from && mt.offset < seg.to && gramUsable(mt); }).map(function (mt) {
+        return { bad: text.substr(mt.offset, mt.length), fix: mt.replacements && mt.replacements[0] ? mt.replacements[0].value : '', msg: mt.shortMessage || mt.message || '' };
+      });
+      var per100 = errs.length / Math.max(1, r.wc) * 100;
+      c.errs = errs.slice(0, 8);
+      c.status = errs.length === 0 || per100 < 3 ? 'ok' : per100 < 8 ? 'mid' : 'bad';
+      if (errs.length === 1 && c.status === 'bad') c.status = 'mid'; // 짧은 답에서 실수 1개로 '부족'이 되지 않도록
+      c.detail = errs.length ? '문법 지적 ' + errs.length + '개 (100단어당 ' + per100.toFixed(1) + '개)' + (errs.length > 8 ? ', 앞의 8개만 표시' : '') + '. 음성 인식이 잘못 받아 적어서 생긴 지적일 수도 있으니 녹음과 비교해 보세요.'
+        : '자동 검사에서 문법 지적이 없었습니다. 다만 음성 인식이 문장을 다듬어 적었을 수 있으니 녹음도 들어 보세요.';
+      c.tip = c.status === 'ok' ? '' : '지적된 표현을 바르게 고쳐 3번 소리 내어 말해 보세요. 같은 실수가 반복되면(예: 3인칭 -s, 과거형) 그 규칙 하나만 집중해서 고치는 것이 가장 빠릅니다.';
+      renderResult(r);
+    });
+    if (refresh) refresh();
   }
   var TEMPLATES = {
     p2: 'This picture was taken at/in ___. The first thing I see is ___. He/She is ___ing ___. On the left/right, ___. In the background, ___. Overall, it looks like ___.',
@@ -744,7 +895,7 @@
     c.appendChild(el('h3', '', '평가 결과 (ETS 평가 항목 기준 자체 진단 · 공식 점수 아님)'));
     var usable = rows.filter(function (r) { return r.ok; });
     if (!usable.length) {
-      c.appendChild(el('div', '', '음성 인식 결과가 없어 평가할 수 없습니다. Chrome에서 인터넷이 연결된 상태로, ‘자동 분석’을 켜고 시험을 봐 주세요.'));
+      c.appendChild(el('div', '', '음성 인식 결과가 없어 평가할 수 없습니다. Chrome에서 인터넷이 연결된 상태로, ‘자동 분석’을 켜고 시험을 봐 주세요. 안드로이드 폰이라면 첫 화면 ‘답변 기록 방식’을 ‘음성 인식만’으로 바꿔 보세요.'));
       return c;
     }
     if (usable.every(function (r) { return r.wc === 0; })) c.appendChild(el('div', 'miss', '모든 문항에서 말이 인식되지 않았습니다. 실제로 답을 했다면 음성 인식이 동작하지 않은 것이니 아래 결과는 무시하고, Chrome·인터넷 연결·마이크 권한을 확인한 뒤 다시 보세요.'));
@@ -755,7 +906,7 @@
 
     if (keys.length === 5) {
       var total = 0; parts.forEach(function (k) { total += pf[k] * PART_W[k]; });
-      var unanswered = rows.filter(function (r) { return r.wc === 0; }).length;
+      var unanswered = rows.filter(function (r) { return r.ok && r.wc === 0; }).length;
       var est = Math.round(total * 200 / 10) * 10;
       var Lv = LEVELS.filter(function (x) { return est >= x.min; })[0];
       if (unanswered > 5) Lv = LEVELS[LEVELS.length - 1];
@@ -793,7 +944,12 @@
       c.appendChild(ol);
     }
     c.appendChild(el('div', 'note', '평가 항목과 척도는 ETS 공식 기준입니다: Q1–2 발음·억양/강세, Q3–4 여기에 문법·어휘·일관성 추가, Q5–11 여기에 내용 관련성·완성도 추가. Q1–10은 0–3점, Q11은 0–5점이며, ETS는 상위 난이도 문항이 총점에 더 크게 반영된다고 밝히고 있습니다(출처: TOEIC Score User Guide – Speaking & Writing, 2024).'));
-    c.appendChild(el('div', 'note', '추정 점수와 레벨은 음성 인식 결과로 계산한 자체 진단입니다. ETS는 문항별 점수 기준표와 200점 환산 방법을 공개하지 않아, 점검 항목·가중치(Q1–2 15%, Q3–4 15%, Q5–7 20%, Q8–10 20%, Q11 30%)는 제가 정한 값입니다. 답변 분량이 권장량의 30% 미만이면 1점, 60% 미만이면 만점의 절반까지로 제한했습니다. 문법 정확성과 발음·억양의 질은 프로그램이 판단할 수 없어 ‘직접 확인’으로 표시했고 점수에 넣지 않았습니다. 그래서 문법 실수가 많으면 실제보다 높게 나올 수 있습니다.'));
+    c.appendChild(el('div', 'note', '추정 점수와 레벨은 음성 인식 결과로 계산한 자체 진단입니다. ETS는 문항별 점수 기준표와 200점 환산 방법을 공개하지 않아, 점검 항목·가중치(Q1–2 15%, Q3–4 15%, Q5–7 20%, Q8–10 20%, Q11 30%)는 제가 정한 값입니다. 답변 분량이 권장량의 30% 미만이면 1점, 60% 미만이면 만점의 절반까지로 제한했습니다. 문법 정확성은 자동 검사(LanguageTool) 또는 자가 채점 결과를 점수에 넣습니다. 자동 검사는 음성 인식이 받아 적은 글자를 검사하므로, 인식 오류가 문법 오류로 잡히거나 실제 실수를 놓칠 수 있습니다. 발음·억양의 질은 판단할 수 없어 ‘직접 확인’으로 표시하고 점수에서 뺐습니다. 자가 채점 항목을 고르기 전에는 그 항목도 점수에서 빠집니다.'));
+    if (gramMode() === 'auto') {
+      var lt = el('div', 'note'); lt.appendChild(document.createTextNode('문법 자동 검사: '));
+      var la = document.createElement('a'); la.href = 'https://languagetool.org'; la.target = '_blank'; la.rel = 'noopener'; la.textContent = 'LanguageTool (languagetool.org)';
+      lt.appendChild(la); lt.appendChild(document.createTextNode(' 공개 API 사용. 인식된 답변 글자(Q3–11)가 LanguageTool 서버로 전송됩니다.')); c.appendChild(lt);
+    }
     return c;
   }
 
@@ -824,6 +980,7 @@
     c.appendChild(document.createTextNode('. 녹음 음성: Kokoro-82M 음성 합성 모델(Apache 2.0)로 만든 음성입니다.'));
   }
   function init() {
+    if (/Android/i.test(navigator.userAgent) && $('recMode')) $('recMode').value = 'sr';
     refreshSets();
     renderCredits();
     loadVoices();

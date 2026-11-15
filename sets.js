@@ -15,6 +15,7 @@
       q3: { image: P.cafe },
       q4: { image: P.meeting },
       q5_7: {
+        starters: ["I use public transportation about five times a week. I usually take the subway to work.", "It usually takes me about thirty minutes to get to work. I usually take the bus.", "One thing that could be improved is the number of buses, because they are too crowded during rush hour."],
         context: 'Imagine that a Canadian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about public transportation.',
         questions: [
           'How often do you use public transportation, and where do you usually go?',
@@ -23,6 +24,7 @@
         ]
       },
       q8_10: {
+        models: ["The conference will be held at the Harbor View Hotel on Saturday, May 18. It starts at 9 a.m. with registration and breakfast.", "Actually, that's not correct. Lunch is included in the registration fee of 80 dollars, so you don't have to pay extra.", "Daniel Moore is leading two workshops. First, from 10:45 to 11:45 a.m., there is a workshop on effective team communication. Second, from 2:30 to 3:30 p.m., there is a workshop on building customer loyalty."],
         info: {
           title: 'Regional Business Leaders Conference',
           subtitle: 'Harbor View Hotel  |  Saturday, May 18',
@@ -58,6 +60,7 @@
       q3: { image: P.library },
       q4: { image: P.grocery },
       q5_7: {
+        starters: ["Korean barbecue is very popular in my city, and I eat it about once a week.", "I think you should make a reservation about one week in advance, because popular restaurants are often fully booked.", "I recommend a small Italian restaurant near my office, because the pasta is delicious and the prices are reasonable."],
         context: 'Imagine that a friend from another country is going to visit your city. You are having a telephone conversation about restaurants.',
         questions: [
           'What kind of food is popular in your city, and how often do you eat it?',
@@ -66,6 +69,7 @@
         ]
       },
       q8_10: {
+        models: ["The first interview starts at 9 a.m., and all of the interviews will take place in Room 302.", "I'm sorry, but that interview was cancelled. James Wilson, the accountant, was scheduled for 3 p.m., so that interview will not take place.", "There are two applicants for the sales manager position. First, Amy Chen, who currently works at Delta Tech, has an interview at 9 a.m. Second, Sofia Martinez from Orion Systems has an interview at 1:30 p.m."],
         info: {
           title: 'Hanson Electronics — Interview Schedule',
           subtitle: 'Thursday, October 10  |  Room 302',
@@ -100,6 +104,7 @@
       q3: { image: P.chef },
       q4: { image: P.barber },
       q5_7: {
+        starters: ["The last time I got a haircut was about two weeks ago. I went to a hair salon near my home.", "I usually find out about a new hair salon from my friends or from online reviews.", "The most important thing to me when I choose a hair salon is the skill of the hairdresser, because I want a good haircut."],
         context: 'Imagine that a US marketing firm is doing research in your country. You have agreed to participate in a telephone interview about hair salons.',
         questions: [
           'When was the last time you got a haircut, and where did you go?',
@@ -108,6 +113,7 @@
         ]
       },
       q8_10: {
+        models: ["The spring session starts on April 7 and ends on May 26.", "Actually, you don't need to bring anything. All ingredients are included in the class fee.", "There are two classes on Saturdays. First, Baking for Beginners with Chef Maria Lopez is from 10 a.m. to 12 p.m., and it costs 90 dollars. Second, Korean Home Cooking with Chef Min Lee is from 1 to 3 p.m., and it costs 110 dollars."],
         info: {
           title: 'Westfield Community Center — Spring Cooking Classes',
           subtitle: 'April 7 – May 26',
@@ -141,6 +147,7 @@
       q3: { image: P.station },
       q4: { image: P.parktable },
       q5_7: {
+        starters: ["I go to a park about twice a week, and I usually go with my family.", "When I go to a park, I usually take a walk or ride my bicycle.", "If a new park opened in my neighborhood, I would want it to have a walking trail, because walking is good for my health."],
         context: 'Imagine that you are talking on the telephone with a friend. You are talking about spending time outdoors.',
         questions: [
           'How often do you go to a park, and who do you usually go with?',
@@ -149,6 +156,7 @@
         ]
       },
       q8_10: {
+        models: ["Your train leaves Central Station at 8:15 a.m. on Monday, and it arrives in Boston at 11:50 a.m.", "Actually, you'll be staying at the Parkside Hotel for two nights. Oceanview is the restaurant where you'll have dinner on Tuesday.", "On Tuesday, you have two plans. First, at 10 a.m., you will take a factory tour at Harper Industries. Then, at 6:30 p.m., you will have dinner with clients at the Oceanview Restaurant."],
         info: {
           title: 'Business Trip Itinerary',
           subtitle: 'Jason Reed, Sales Department',
@@ -183,6 +191,7 @@
       q3: { image: P.lab },
       q4: { image: P.outdoormarket },
       q5_7: {
+        starters: ["I usually buy fruit and vegetables at a supermarket near my home, because it is close and the prices are good.", "I buy fresh fruit about twice a week, and I usually buy apples and bananas.", "I think it is better to buy vegetables at a traditional market, because the vegetables are fresher and cheaper."],
         context: 'Imagine that a British marketing firm is doing research in your country. You have agreed to participate in a telephone interview about buying fruit and vegetables.',
         questions: [
           'Where do you usually buy fruit and vegetables, and why do you shop there?',
@@ -191,6 +200,7 @@
         ]
       },
       q8_10: {
+        models: ["The training will be held in Room 210 of the Science Building, and it starts at 9 a.m.", "Actually, you don't need to bring them. Lab coats and safety glasses will be provided.", "Dr. Peter Wong is leading two sessions in the morning. First, from 9:30 to 10:30, there is a lecture on handling chemicals safely. Then, from 10:45 to 11:45, there is a demonstration on using safety equipment."],
         info: {
           title: 'Lakeview University — Lab Safety Training',
           subtitle: 'Thursday, March 14  |  Science Building, Room 210',
@@ -226,6 +236,7 @@
       q3: { image: P.bikeshop },
       q4: { image: P.officelaptops },
       q5_7: {
+        starters: ["The last time I rode a bicycle was last weekend. I rode it along the river near my home.", "I would rather ride a bicycle with friends, because it is more fun to talk and ride together.", "I think my city is a good place for riding bicycles, because there are many bike lanes along the river."],
         context: 'Imagine that a Canadian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about bicycles.',
         questions: [
           'When was the last time you rode a bicycle, and where did you ride it?',
@@ -234,6 +245,7 @@
         ]
       },
       q8_10: {
+        models: ["The orientation is on Monday, September 9, and it will be held in Conference Room B.", "Actually, that session has been moved. The Q&A session with the CEO, Rachel Adams, will be on Tuesday at 10 a.m.", "Brian Hall, the HR manager, is leading two sessions. First, at 9:30 a.m., there is a session on the company's history and values. Second, at 1:30 p.m., there is an office tour."],
         info: {
           title: 'Nova Software — New Employee Orientation',
           subtitle: 'Monday, September 9  |  Conference Room B',
@@ -269,6 +281,7 @@
       q3: { image: P.buffet },
       q4: { image: P.bus },
       q5_7: {
+        starters: ["The last time I went to a party was last month. It was my friend's birthday party.", "I prefer having parties at home, because it is more comfortable and less expensive.", "If I were planning a birthday party for a friend, I would serve pizza and cake, because most people like them."],
         context: 'Imagine that an Australian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about parties and celebrations.',
         questions: [
           'When was the last time you went to a party, and what was the occasion?',
@@ -277,6 +290,7 @@
         ]
       },
       q8_10: {
+        models: ["The festival is on Saturday, July 20, and it will be held at Riverside Park.", "Actually, you don't need a ticket. Admission is free.", "There are three events on the main stage. First, the opening ceremony starts at 11 a.m. Then, at 1 p.m., there is a jazz concert by The Blue Notes. Finally, at 7 p.m., there is a rock concert by the City Lights Band."],
         info: {
           title: 'Riverside Summer Festival',
           subtitle: 'Saturday, July 20  |  Riverside Park',
@@ -312,6 +326,7 @@
       q3: { image: P.hotellobby },
       q4: { image: P.movers },
       q5_7: {
+        starters: ["The last time I stayed at a hotel was last summer. It was in Busan.", "I usually book a hotel room online, because it is fast and I can compare prices.", "When I choose a hotel, location is the most important to me, because I want to save time when I travel."],
         context: 'Imagine that a travel magazine is doing research in your country. You have agreed to participate in a telephone interview about hotels.',
         questions: [
           'When was the last time you stayed at a hotel, and where was it?',
@@ -320,6 +335,7 @@
         ]
       },
       q8_10: {
+        models: ["The sales training is in the Ocean Room, and it starts at 9 a.m.", "Actually, the retirement party is in the Garden Room, from 6 to 9 p.m.", "There are two events in the evening. First, Mr. James Cole's retirement party is in the Garden Room from 6 to 9 p.m., for 60 people. Second, the Kim family's anniversary dinner is in the Sky Lounge from 7 to 10 p.m., for 30 people."],
         info: {
           title: 'Grand Bay Hotel — Event Room Reservations',
           subtitle: 'Friday, November 8',
@@ -354,6 +370,7 @@
       q3: { image: P.librarydesk },
       q4: { image: P.cafetable },
       q5_7: {
+        starters: ["I go to a library about once a month, and I usually borrow books there.", "I prefer reading paper books, because they are easier on my eyes.", "I would visit a library more often if it were open later at night, because I am busy during the day."],
         context: 'Imagine that a US marketing firm is doing research in your country. You have agreed to participate in a telephone interview about libraries.',
         questions: [
           'How often do you go to a library, and what do you usually do there?',
@@ -362,6 +379,7 @@
         ]
       },
       q8_10: {
+        models: ["The author talk is on Wednesday, October 9, at 7 p.m., and it will be held in the Main Hall.", "Actually, you don't need to pay. All events are free.", "There are two events that require registration. First, the Computer Basics Workshop is on Saturday, October 12, at 2 p.m. Second, the Job Interview Skills Workshop is on Saturday, October 19, at 2 p.m. Both are in the Computer Lab, and you can register by calling 555-0192."],
         info: {
           title: 'Oakwood Public Library — October Events',
           subtitle: 'All events are free',
@@ -396,6 +414,7 @@
       q3: { image: P.workshop },
       q4: { image: P.produce },
       q5_7: {
+        starters: ["The nearest grocery store is about five minutes from my home, and I usually walk there.", "I think the best time to go grocery shopping in my neighborhood is in the morning, because the store is not crowded.", "I think it is a good idea to buy groceries online, because it saves a lot of time."],
         context: 'Imagine that a friend is moving to your neighborhood. You are having a telephone conversation about grocery shopping.',
         questions: [
           'Where is the nearest grocery store from your home, and how do you get there?',
@@ -404,6 +423,7 @@
         ]
       },
       q8_10: {
+        models: ["The workshop is being held at the Summit Business Center on the 3rd floor. Registration starts at 9 a.m., so you should arrive by 9.", "Actually, you don't need to bring lunch. Lunch is provided.", "Anna White is leading two sessions. First, from 9:30 to 11 a.m., there is a session on clear communication at work. Second, from 1:30 to 3:30 p.m., there is a group project on solving business problems."],
         info: {
           title: 'Leadership Workshop',
           subtitle: 'Thursday, May 16  |  Summit Business Center, 3rd Floor',
@@ -439,6 +459,7 @@
       q3: { image: P.passportcontrol },
       q4: { image: P.whiteboard },
       q5_7: {
+        starters: ["I go to a coffee shop about three times a week, and I usually go with my coworkers.", "I usually take my drink to go, because I don't have much time in the morning.", "The most important thing to me when choosing a coffee shop is a quiet place to sit, because I often study there."],
         context: 'Imagine that a US marketing firm is doing research in your country. You have agreed to participate in a telephone interview about coffee shops.',
         questions: [
           'How often do you go to a coffee shop, and who do you usually go with?',
@@ -447,6 +468,7 @@
         ]
       },
       q8_10: {
+        models: ["The team meeting is on Monday, June 3, at 9 a.m., and it will be in Room 401.", "Actually, the budget review was moved to Wednesday, June 5, at 10 a.m.", "You have two interviews on Thursday, June 6. First, at 11 a.m., you will interview a candidate for the graphic designer position. Then, at 3 p.m., you will interview a candidate for the sales assistant position."],
         info: {
           title: 'Brookfield Marketing — Weekly Schedule',
           subtitle: 'Manager: Susan Clark  |  Week of June 3',
@@ -482,6 +504,7 @@
       q3: { image: P.lecturehall },
       q4: { image: P.sidewalkdining },
       q5_7: {
+        starters: ["I use my mobile phone about four hours a day, and I mostly use it for watching videos and sending messages.", "The last time I bought a new phone was about a year ago. I bought it at an electronics store.", "If I were buying a new phone, I would buy it in a store, because I want to try it before I buy it."],
         context: 'Imagine that a Canadian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about mobile phones.',
         questions: [
           'How many hours a day do you use your mobile phone, and what do you mostly use it for?',
@@ -490,6 +513,7 @@
         ]
       },
       q8_10: {
+        models: ["The fall semester starts on September 9 and ends on December 13.", "Actually, there is one weekend class. Website Design is offered on Saturdays from 10 a.m. to 1 p.m. in the Computer Lab, and it costs 300 dollars.", "There are two classes on Mondays and Wednesdays. First, Basic Accounting is from 6 to 7:30 p.m. in Room 110, and it costs 220 dollars. Second, Business Writing is from 7:45 to 9:15 p.m. in Room 205, and it costs 180 dollars."],
         info: {
           title: 'Greenville Community College — Evening Classes',
           subtitle: 'Fall Semester  |  September 9 – December 13',
@@ -524,6 +548,7 @@
       q3: { image: P.bookstore },
       q4: { image: P.foodprep },
       q5_7: {
+        starters: ["The last time I watched a movie was last weekend. It was about a family who traveled around the world.", "I prefer to watch movies at home, because I can watch them comfortably at any time.", "If a new movie theater opened in my area, I would go there if it had comfortable seats, because I like to relax when I watch a movie."],
         context: 'Imagine that you are talking on the telephone with a friend. You are talking about watching movies.',
         questions: [
           'When was the last time you watched a movie, and what was it about?',
@@ -532,6 +557,7 @@
         ]
       },
       q8_10: {
+        models: ["The tour starts at City Hall, and the bus leaves at 8 a.m.", "Actually, that's not correct. Only the hotel and breakfast are included in the price. Lunch and dinner are not included.", "On the second day, there are two activities. First, at 9 a.m., we will visit the Mountain History Museum. Then, at 2 p.m., we will take a cable car ride to the summit."],
         info: {
           title: 'Sunrise Travel — Tour Itinerary',
           subtitle: 'Three-Day Mountain Tour  |  Group Leader: Kevin Park',
@@ -568,6 +594,7 @@
       q3: { image: P.conventioncenter },
       q4: { image: P.autorepair },
       q5_7: {
+        starters: ["I exercise about three times a week, and I usually go jogging in the park.", "I prefer to exercise with other people, because it helps me stay motivated.", "If a new fitness center opened near my home, I would join it if the membership fee were reasonable, because I am trying to save money."],
         context: 'Imagine that a British marketing firm is doing research in your country. You have agreed to participate in a telephone interview about exercise.',
         questions: [
           'How often do you exercise, and what kind of exercise do you do?',
@@ -576,6 +603,7 @@
         ]
       },
       q8_10: {
+        models: ["The job fair is being held in Hall B of the Hartley Convention Center, and it begins at 10 a.m.", "I'm afraid that's not correct. Online registration is required, so please register before you come.", "In the afternoon, there are two events. First, from 1:30 to 4 p.m., there are one-on-one interviews in Rooms 1 to 5. After that, from 4 to 4:30 p.m., there is a company tour."],
         info: {
           title: 'Hartley Industries — Job Fair',
           subtitle: 'Saturday, April 12  |  Hartley Convention Center, Hall B',
@@ -611,6 +639,7 @@
       q3: { image: P.breadstall },
       q4: { image: P.studygroup },
       q5_7: {
+        starters: ["I shop online about twice a week, and I usually buy clothes and household items.", "The last thing I bought online was a pair of running shoes, and I was very happy with them.", "I don't think online shopping will completely replace shopping in stores, because many people still want to see and touch products before buying them."],
         context: 'Imagine that an Australian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about online shopping.',
         questions: [
           'How often do you shop online, and what do you usually buy?',
@@ -619,6 +648,7 @@
         ]
       },
       q8_10: {
+        models: ["Dr. Hill works on Tuesdays and Thursdays, from 10 a.m. to 6 p.m.", "Actually, parking is free for patients, so you don't have to pay.", "Dr. Chen is available three days this week: Monday, Wednesday, and Friday. On those days, Dr. Chen sees patients from 9 a.m. to 5 p.m."],
         info: {
           title: 'Ridgeway Medical Center — Doctor Schedule',
           subtitle: 'Week of March 10',
@@ -652,6 +682,7 @@
       q3: { image: P.siteplan },
       q4: { image: P.parklawn },
       q5_7: {
+        starters: ["A popular place for tourists in my city is the old palace downtown, and most people get there by subway.", "The best time of year to visit my city is fall, because the weather is cool and the leaves are beautiful.", "If you only have one day in my city, you should visit the traditional market, because you can try many local foods there."],
         context: 'Imagine that a friend is visiting your city next month. You are having a telephone conversation about tourist attractions.',
         questions: [
           'What is a popular place for tourists to visit in your city, and how do people get there?',
@@ -660,6 +691,7 @@
         ]
       },
       q8_10: {
+        models: ["Admission is 40 dollars if you buy a ticket in advance, and 55 dollars at the door.", "Actually, the first event is the opening speech on healthy eating trends by Dr. Alan Brooks at 9 a.m. The cooking demonstration starts at 11:30 a.m.", "Sarah Miller is giving two lectures. First, from 10:15 to 11:15 a.m., the lecture is about reducing food waste. Second, from 1:30 to 2:30 p.m., the lecture is about packaging for the future."],
         info: {
           title: 'National Food Industry Expo',
           subtitle: 'Thursday, August 22  |  Metro Exhibition Hall',
@@ -695,6 +727,7 @@
       q3: { image: P.trainplatform },
       q4: { image: P.butchercounter },
       q5_7: {
+        starters: ["I listen to music every day, and I usually listen to it on the subway.", "Yes, I have been to a concert. I went to a rock concert last year, because my favorite band was performing.", "I prefer to listen to music on my phone, because I can choose the songs I like."],
         context: 'Imagine that a US marketing firm is doing research in your country. You have agreed to participate in a telephone interview about music.',
         questions: [
           'How often do you listen to music, and where do you usually listen to it?',
@@ -703,6 +736,7 @@
         ]
       },
       q8_10: {
+        models: ["The restaurant is on the first floor, and breakfast is served from 6:30 to 10 a.m.", "I'm sorry, but the pool is closed on Mondays. It's open from 8 a.m. to 8 p.m. on other days.", "The airport shuttle runs every hour from 5 a.m. to 9 p.m., and it costs 15 dollars per person."],
         info: {
           title: 'Bright Star Hotel — Guest Services',
           subtitle: 'Front Desk: open 24 hours',
@@ -737,6 +771,7 @@
       q3: { image: P.officelounge },
       q4: { image: P.cyclists },
       q5_7: {
+        starters: ["I read books about twice a month, and I like mystery novels.", "I usually get the books that I read from the library near my home.", "I prefer to read paper books, because I can concentrate better and my eyes don't get tired."],
         context: 'Imagine that a Canadian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about reading.',
         questions: [
           'How often do you read books, and what kind of books do you like?',
@@ -745,6 +780,7 @@
         ]
       },
       q8_10: {
+        models: ["The bus leaves from the main office at 8 a.m. on Friday.", "Actually, that's not correct. Rooms are shared by two employees.", "Helen Ward is leading two workshops. First, on Friday at 3 p.m., there is a workshop on time management. Second, on Saturday at 9 a.m., there is a workshop on working with difficult clients."],
         info: {
           title: 'Bell & Ross Accounting — Annual Company Retreat',
           subtitle: 'Friday, October 4 – Saturday, October 5  |  Pine Lake Resort',
@@ -781,6 +817,7 @@
       q3: { image: P.harborview },
       q4: { image: P.carpentry },
       q5_7: {
+        starters: ["I cook at home about four times a week, and I usually make simple dishes like fried rice or soup.", "My mother taught me how to cook when I was in high school.", "I think it is better to cook at home, because it is healthier and cheaper than eating at restaurants."],
         context: 'Imagine that a British marketing firm is doing research in your country. You have agreed to participate in a telephone interview about cooking at home.',
         questions: [
           'How often do you cook at home, and what do you usually make?',
@@ -789,6 +826,7 @@
         ]
       },
       q8_10: {
+        models: ["The first event is on May 6 at the Page One Bookstore in Boston, at 6 p.m. It's a reading and book signing.", "Actually, not all of them. All of the events are free except the business lunch in Baltimore on May 15, which costs 35 dollars.", "There are two lectures. First, on May 8, there is a lecture at the Central Library in New York at 7 p.m. Second, on May 10, there is a lecture at City University in Philadelphia at 2 p.m."],
         info: {
           title: 'Dr. Nancy Ford — Book Tour',
           subtitle: 'New Book: "Small Habits, Big Results"',
@@ -823,6 +861,7 @@
       q3: { image: P.streetfoodstall },
       q4: { image: P.strawberrypicking },
       q5_7: {
+        starters: ["I take photos almost every day, and I usually take photos of food and nature.", "Yes, I usually share my photos with my friends on social media, because I want to share my daily life with them.", "I would rather take photos with a phone, because it is light and I always carry it with me."],
         context: 'Imagine that an Australian marketing firm is doing research in your country. You have agreed to participate in a telephone interview about taking photos.',
         questions: [
           'How often do you take photos, and what do you usually take photos of?',
@@ -831,6 +870,7 @@
         ]
       },
       q8_10: {
+        models: ["The interviews will take place in Room 204, and the first one is at 9 a.m.", "I'm sorry, but that interview has been cancelled. Diana Ross will not be coming at 11.", "Two candidates are currently working as office managers. First, Steven Lee, who works at Bay Bank, has an interview at 10 a.m. Second, Amy Hall from Star Media has an interview at 2:30 p.m. Diana Ross is also an office manager, but that interview was cancelled."],
         info: {
           title: 'Taylor & Associates — Job Interview Schedule',
           subtitle: 'Position: Office Manager  |  Wednesday, February 12  |  Room 204',
