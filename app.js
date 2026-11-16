@@ -221,6 +221,52 @@
       return loud * 0.05 >= 1; // 일정 크기 이상의 소리가 1초 이상 (기준값은 자체 설정)
     } catch (e) { return false; }
   }
+  // ---------- 폰 안에서 녹음 파일 인식 (Whisper, transformers.js) ----------
+  // 안드로이드처럼 녹음과 실시간 음성 인식을 동시에 못 하는 기기용. 시험이 끝난 뒤 녹음 파일을 기기 안에서 글자로 바꿈.
+  // 라이브러리는 jsDelivr, 모델(Xenova/whisper-tiny.en)은 Hugging Face에서 처음 한 번 내려받고, 음성은 기기 밖으로 나가지 않음.
+  var TJS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1/dist/transformers.min.js';
+  var ASR_MODEL = 'Xenova/whisper-tiny.en';
+  var asrPipe = null;
+  async function getAsr(onProg) {
+    if (asrPipe) return asrPipe;
+    var T = await import(TJS_URL);
+    asrPipe = await T.pipeline('automatic-speech-recognition', ASR_MODEL, { progress_callback: onProg });
+    return asrPipe;
+  }
+  async function toPcm16k(blob) {
+    var ctx = ensureAudioCtx();
+    var buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+    var off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * 16000)), 16000);
+    var src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+    return (await off.startRendering()).getChannelData(0);
+  }
+  function cleanAsr(text) { return String(text || '').replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); }
+  async function localRecognize(qs, trs, recs) {
+    var skip = false, msg = el('div', 'directions', '녹음한 답변을 폰 안에서 글자로 바꾸는 중입니다...'), sub = el('div', 'note', '');
+    var btn = el('button', 'btn', '인식 건너뛰기'); btn.type = 'button'; btn.onclick = function () { skip = true; };
+    stage([msg, sub, btn]);
+    var files = {}, pipe = null, why = '';
+    try {
+      pipe = await getAsr(function (p) {
+        if (p && p.status === 'progress' && p.file) { files[p.file] = p.progress || 0; }
+        var ks = Object.keys(files); if (!ks.length) return;
+        var avg = ks.reduce(function (a, k) { return a + files[k]; }, 0) / ks.length;
+        sub.textContent = '음성 인식 모델 내려받는 중 ' + Math.round(avg) + '% (처음 한 번만, 수십 MB · 와이파이 권장)';
+      });
+    } catch (e) { why = '음성 인식 모델을 불러오지 못했습니다(인터넷 연결 확인)'; console.error(e); }
+    var todo = qs.filter(function (q) { return trs[q] && trs[q].error === 'local-pending'; });
+    for (var i = 0; i < todo.length; i++) {
+      var q = todo[i], b = recs[q];
+      if (!pipe || skip) { trs[q] = { text: '', error: 'local-fail', msg: (skip ? '인식을 건너뛰었습니다.' : why) + ' 녹음은 아래에서 들을 수 있습니다.' }; continue; }
+      if (!b || !b.size) { trs[q] = { text: '', error: null }; continue; }
+      sub.textContent = '답변 ' + (i + 1) + ' / ' + todo.length + ' 인식 중 (Question ' + q + ')';
+      try {
+        if (!(await hasVoice(b))) { trs[q] = { text: '', error: null }; continue; } // 무음에서 생기는 엉뚱한 글자 방지
+        var out = await pipe(await toPcm16k(b), { chunk_length_s: 30, stride_length_s: 5 });
+        trs[q] = { text: cleanAsr(out && out.text), error: null };
+      } catch (e) { console.error(e); trs[q] = { text: '', error: 'local-fail', msg: '이 답변은 폰 안 음성 인식에 실패했습니다. 녹음은 아래에서 들을 수 있습니다.' }; }
+    }
+  }
   function startRecording() {
     if (!micStream || !window.MediaRecorder) return null;
     var mime = pickMime(), chunks = [];
@@ -253,6 +299,10 @@
         if (active) { try { make(); } catch (x) { active = false; if (ended) ended(); } }
         else if (ended) ended();
       };
+      // 안드로이드: 녹음 중인 마이크 스트림을 음성 인식에 그대로 넘겨 마이크를 두 번 잡지 않게 시도
+      // (Web Speech API 표준의 start(MediaStreamTrack). 안드로이드 Chrome 지원 여부는 확인 못 함 → 실패하면 기존 방식)
+      var track = /Android/i.test(navigator.userAgent) && micStream && micStream.getAudioTracks()[0];
+      if (track) { try { rec.start(track); return; } catch (x) { /* 지원 안 함: 아래 기본 방식 */ } }
       rec.start();
     }
     try { make(); } catch (x) { return { stop: function () { return Promise.resolve({ text: '', error: 'start-failed' }); } }; }
@@ -270,7 +320,7 @@
   }
   async function respond(qnum, sec) {
     var r = recMode() === 'sr' ? null : startRecording();
-    var sr = startRecognition();
+    var sr = recMode() === 'local' && $('analyze').checked ? { stop: function () { return Promise.resolve({ text: '', error: 'local-pending' }); } } : startRecognition();
     setStatus(r ? '<span class="recdot"></span> 녹음 중' : recMode() === 'sr' ? '<span class="recdot"></span> 음성 인식 중 (녹음 안 함)' : '마이크가 꺼져 있어 녹음되지 않습니다');
     try { await countdown(sec, 'resp'); }
     finally {
@@ -475,6 +525,7 @@
     hideTimer(); stage([el('div', 'directions', '답변을 정리하는 중입니다...')]);
     var trs = {}, qs = Object.keys(session.transcripts);
     for (var i = 0; i < qs.length; i++) trs[qs[i]] = await session.transcripts[qs[i]];
+    if (qs.some(function (q) { return trs[q] && trs[q].error === 'local-pending'; })) await localRecognize(qs, trs, session.recordings);
     // 인식 결과가 비었는데 녹음에는 목소리가 있으면 '무응답'이 아니라 '인식 실패'로 처리
     for (var j = 0; j < qs.length; j++) {
       var q = qs[j], tr0 = trs[q];
@@ -581,7 +632,7 @@
     var r = { q: m.q, part: m.part, node: box, wc: 0, wpm: 0, ok: !tr.error, sec: sec, max: m.q === 11 ? 5 : 3, score: null, checks: [] };
     box.appendChild(el('div', 'ah', 'ETS 평가 항목: ' + CRIT[m.part].join(' · ') + '  (척도 0–' + r.max + '점)'));
     if (!tr.text) {
-      if (tr.error) { box.appendChild(el('div', '', ERRMSG[tr.error] || ('음성 인식 오류: ' + tr.error))); return r; }
+      if (tr.error) { box.appendChild(el('div', '', tr.msg || ERRMSG[tr.error] || ('음성 인식 오류: ' + tr.error))); return r; }
       r.score = 0;
       box.appendChild(el('div', 'scoreline', '추정 점수: 0 / ' + r.max));
       box.appendChild(el('div', 'miss', '인식된 말이 없습니다. 답변을 하지 않았거나 소리가 너무 작았을 수 있습니다. 실제 시험에서 무응답은 0점입니다. 한 문장이라도 말하는 것이 훨씬 유리합니다.'));
@@ -980,7 +1031,7 @@
     c.appendChild(document.createTextNode('. 녹음 음성: Kokoro-82M 음성 합성 모델(Apache 2.0)로 만든 음성입니다.'));
   }
   function init() {
-    if (/Android/i.test(navigator.userAgent) && $('recMode')) $('recMode').value = 'sr';
+    if (/Android/i.test(navigator.userAgent) && $('recMode')) $('recMode').value = 'local';
     refreshSets();
     renderCredits();
     loadVoices();
