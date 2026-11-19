@@ -209,7 +209,9 @@
     return '';
   }
   // 녹음 파일에 목소리 크기의 소리가 있는지 확인 (실패하면 판단 보류 = false)
-  async function hasVoice(blob) {
+  async function hasVoice(blob) { return (await voicedSeconds(blob)) >= 1; }
+  // 녹음에서 일정 크기 이상의 소리가 난 시간(초). 판단 실패 시 0. 기준값은 자체 설정
+  async function voicedSeconds(blob) {
     try {
       var ctx = ensureAudioCtx(); if (!ctx || !blob || !blob.size) return false;
       var buf = await ctx.decodeAudioData(await blob.arrayBuffer());
@@ -218,8 +220,8 @@
         var s = 0; for (var k = i; k < i + win; k++) s += d[k] * d[k];
         if (Math.sqrt(s / win) > 0.01) loud++;
       }
-      return loud * 0.05 >= 1; // 일정 크기 이상의 소리가 1초 이상 (기준값은 자체 설정)
-    } catch (e) { return false; }
+      return loud * 0.05;
+    } catch (e) { return 0; }
   }
   // ---------- 폰 안에서 녹음 파일 인식 (Whisper, transformers.js) ----------
   // 안드로이드처럼 녹음과 실시간 음성 인식을 동시에 못 하는 기기용. 시험이 끝난 뒤 녹음 파일을 기기 안에서 글자로 바꿈.
@@ -283,12 +285,20 @@
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!$('analyze').checked) return { stop: function () { return Promise.resolve({ text: '', error: 'off' }); } };
     if (!SR) return { stop: function () { return Promise.resolve({ text: '', error: 'not-supported' }); } };
-    var text = '', err = null, active = true, rec = null, ended = null;
+    // 확정(final) 결과만 모으면, 답변 시간이 끝나 말이 끊긴 마지막 문장이나 인식이 스스로 멈출 때의 문장이
+    // 확정되지 못하고 사라질 수 있음. 그래서 중간(interim) 결과도 받아 두었다가 확정되지 않은 채 끝나면 그것을 씀.
+    var text = '', interim = '', err = null, active = true, rec = null, ended = null;
+    function flushInterim() { if (interim.trim()) text += interim.trim() + ' '; interim = ''; }
     function make() {
       rec = new SR();
-      rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
       rec.onresult = function (e) {
-        for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) text += e.results[i][0].transcript + ' ';
+        var cur = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) text += e.results[i][0].transcript + ' ';
+          else cur += e.results[i][0].transcript + ' ';
+        }
+        interim = cur;
       };
       rec.onerror = function (e) {
         if (e.error !== 'no-speech' && e.error !== 'aborted') err = e.error;
@@ -296,6 +306,7 @@
       };
       // 크롬은 말이 잠시 끊기면 인식을 스스로 멈추므로 답변 시간 동안 다시 켬
       rec.onend = function () {
+        flushInterim();
         if (active) { try { make(); } catch (x) { active = false; if (ended) ended(); } }
         else if (ended) ended();
       };
@@ -311,16 +322,25 @@
         active = false;
         return new Promise(function (resolve) {
           var t = setTimeout(go, 2500);
-          function go() { clearTimeout(t); resolve({ text: text.trim(), error: text.trim() ? null : err }); }
+          function go() { clearTimeout(t); flushInterim(); resolve({ text: text.trim(), error: text.trim() ? null : err }); }
           ended = go;
           try { rec.stop(); } catch (x) { go(); }
         });
       }
     };
   }
-  async function respond(qnum, sec) {
+  // 음성 인식은 켜지는 데 시간이 걸려 첫 단어를 놓칠 수 있으므로, 시작 삐 소리 직전에 미리 켬
+  function armSR() {
+    return recMode() === 'local' && $('analyze').checked ? { stop: function () { return Promise.resolve({ text: '', error: 'local-pending' }); } } : startRecognition();
+  }
+  async function beepThenRespond(qnum, sec) {
+    var pre = armSR();
+    try { await beep(); } catch (e) { pre.stop(); throw e; }
+    await respond(qnum, sec, pre);
+  }
+  async function respond(qnum, sec, pre) {
     var r = recMode() === 'sr' ? null : startRecording();
-    var sr = recMode() === 'local' && $('analyze').checked ? { stop: function () { return Promise.resolve({ text: '', error: 'local-pending' }); } } : startRecognition();
+    var sr = pre || armSR();
     setStatus(r ? '<span class="recdot"></span> 녹음 중' : recMode() === 'sr' ? '<span class="recdot"></span> 음성 인식 중 (녹음 안 함)' : '마이크가 꺼져 있어 녹음되지 않습니다');
     try { await countdown(sec, 'resp'); }
     finally {
@@ -381,8 +401,7 @@
     await beep();
     await countdown(prep, 'prep');
     await speak('Begin ' + verb + ' now.');
-    await beep();
-    await respond(qnum, resp);
+    await beepThenRespond(qnum, resp);
   }
   async function runP1(s) {
     var qs = [[1, s.q1], [2, s.q2]];
@@ -413,8 +432,7 @@
       stage([el('div', 'context', d.context), el('div', 'qtext', 'Question ' + q + ': ' + d.questions[i])]);
       await speak(d.questions[i]);
       await countdown(3, 'prep');
-      await beep();
-      await respond(q, times[i]);
+      await beepThenRespond(q, times[i]);
     }
   }
   async function runP4(s) {
@@ -431,8 +449,7 @@
       await speak(d.questions[i], { caption: cap });
       if (q === 10) { await sleep(1200); await speak(d.questions[i], { caption: cap }); }
       await countdown(3, 'prep');
-      await beep();
-      await respond(q, times[i]);
+      await beepThenRespond(q, times[i]);
     }
   }
   async function runP5(s) {
@@ -519,6 +536,33 @@
     });
     return out;
   }
+  // 녹음 파일을 기기 안의 Whisper로 다시 인식해 그 문항만 다시 채점 (실시간 인식이 말을 빠뜨렸을 때)
+  function reRecognizeBtn(m, s, blob, rows, card) {
+    var box = el('span', 'rerec'), btn = el('button', 'btn', '녹음으로 다시 인식'), info = el('span', 'note', '');
+    btn.type = 'button'; box.appendChild(btn); box.appendChild(info);
+    btn.onclick = async function () {
+      var idx = rows.findIndex(function (x) { return x.q === m.q; }), old = rows[idx];
+      btn.disabled = true; info.textContent = ' 준비 중...';
+      try {
+        var files = {};
+        var pipe = await getAsr(function (p) {
+          if (p && p.status === 'progress' && p.file) files[p.file] = p.progress || 0;
+          var ks = Object.keys(files); if (ks.length) info.textContent = ' 인식 모델 내려받는 중 ' + Math.round(ks.reduce(function (a, k) { return a + files[k]; }, 0) / ks.length) + '% (처음 한 번만)';
+        });
+        info.textContent = ' 인식 중...';
+        var out = await pipe(await toPcm16k(blob), { chunk_length_s: 30, stride_length_s: 5 });
+        var text = cleanAsr(out && out.text);
+        var nr = analyze(m, s, { text: text, error: null, voiced: old && old.voiced, engine: 'whisper', prevText: old ? (old.text || '') : '' });
+        if (old && old.node && old.node.parentNode === card) card.replaceChild(nr.node, old.node); else card.appendChild(nr.node);
+        if (idx >= 0) rows[idx] = nr; else rows.push(nr);
+        info.textContent = text ? ' 다시 인식했습니다.' : ' 다시 인식했지만 글자가 나오지 않았습니다.';
+        if (reportRefresh) reportRefresh();
+        runGrammar([nr], reportRefresh);
+      } catch (e) { console.error(e); info.textContent = ' 다시 인식하지 못했습니다(인터넷 연결 또는 기기 성능 문제).'; }
+      btn.disabled = false;
+    };
+    return box;
+  }
   async function finishTest(keys) {
     var recs = session.recordings, s = lastRun.set, list = $('reviewList');
     list.innerHTML = '';
@@ -530,6 +574,7 @@
     for (var j = 0; j < qs.length; j++) {
       var q = qs[j], tr0 = trs[q];
       if (tr0 && !tr0.text && !tr0.error && session.recordings[q] && await hasVoice(session.recordings[q])) trs[q] = { text: '', error: 'recog-empty' };
+      if (trs[q] && session.recordings[q]) trs[q].voiced = await voicedSeconds(session.recordings[q]);
     }
     var shownTip = {}, metas = qMeta(s, keys), rows = [];
     metas.forEach(function (m) { if (trs[m.q]) rows.push(analyze(m, s, trs[m.q])); });
@@ -548,6 +593,7 @@
         var ext = /mp4/.test(b.type) ? 'm4a' : /ogg/.test(b.type) ? 'ogg' : 'webm';
         dl.download = 'TOEIC-Speaking-Q' + m.q + '.' + ext; dl.textContent = '파일로 저장';
         c.appendChild(dl);
+        if ($('analyze').checked) c.appendChild(reRecognizeBtn(m, s, b, rows, c));
       } else c.appendChild(el('div', 'note', recMode() === 'sr' ? '‘음성 인식만’ 모드라 녹음하지 않았습니다.' : '녹음된 답변이 없습니다 (마이크 꺼짐 또는 건너뜀).'));
       var an = rows.filter(function (r) { return r.q === m.q; })[0];
       if (an) c.appendChild(an.node);
@@ -570,7 +616,7 @@
     'service-not-allowed': '이 브라우저에서 음성 인식 서비스를 사용할 수 없습니다. Chrome에서 열어 주세요.',
     'audio-capture': '마이크를 음성 인식에 사용할 수 없었습니다.',
     'start-failed': '음성 인식을 시작하지 못했습니다.',
-    'recog-empty': '녹음에는 목소리가 있는데 음성 인식 결과가 비어 있습니다. 무응답이 아니라 인식 실패라서 점수에서 뺐습니다. 안드로이드 폰에서는 녹음과 음성 인식을 동시에 하면 인식이 안 되는 경우가 있으니, 첫 화면 ‘답변 기록 방식’을 ‘음성 인식만’으로 바꿔 다시 해 보세요.'
+    'recog-empty': '녹음에는 목소리가 있는데 음성 인식 결과가 비어 있습니다. 무응답이 아니라 인식 실패라서 점수에서 뺐습니다. 위의 ‘녹음으로 다시 인식’을 누르면 녹음 파일로 다시 인식해 채점합니다. 안드로이드 폰이라면 다음부터 첫 화면 ‘답변 기록 방식’을 ‘녹음 + 시험 후 폰 안에서 인식’으로 바꿔 보세요.'
   };
   // 음성 인식은 숫자를 '20%'처럼 쓰므로 0~99는 영어 단어로 바꿔 지문(twenty percent)과 비교
   var ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
@@ -630,6 +676,7 @@
   function analyze(m, s, tr) {
     var box = el('div', 'analysis'), sec = RESP_SEC[m.q] || 30;
     var r = { q: m.q, part: m.part, node: box, wc: 0, wpm: 0, ok: !tr.error, sec: sec, max: m.q === 11 ? 5 : 3, score: null, checks: [] };
+    r.voiced = tr.voiced; r.engine = tr.engine; r.prevText = tr.prevText;
     box.appendChild(el('div', 'ah', 'ETS 평가 항목: ' + CRIT[m.part].join(' · ') + '  (척도 0–' + r.max + '점)'));
     if (!tr.text) {
       if (tr.error) { box.appendChild(el('div', '', tr.msg || ERRMSG[tr.error] || ('음성 인식 오류: ' + tr.error))); return r; }
@@ -829,7 +876,13 @@
     r.score = scoreOf(r);
     b.innerHTML = '';
     b.appendChild(el('div', 'scoreline', '추정 점수: ' + r.score + ' / ' + r.max));
-    b.appendChild(el('div', 'tr', '인식된 내 답변: “' + r.text + '”'));
+    b.appendChild(el('div', 'tr', (r.engine === 'whisper' ? '녹음 파일로 다시 인식한 내 답변: “' : '인식된 내 답변: “') + r.text + '”'));
+    if (r.prevText != null) b.appendChild(el('div', 'note', '처음 인식 결과: “' + (r.prevText || '(없음)') + '”'));
+    if (r.voiced) {
+      var rate = r.wc / r.voiced, low = r.voiced >= 3 && rate < 1;
+      b.appendChild(el('div', low ? 'qwarn' : 'note', '인식 점검: 목소리가 난 시간 약 ' + r.voiced.toFixed(1) + '초 · 인식된 단어 ' + r.wc + '개 (1초당 ' + rate.toFixed(1) + '단어)' +
+        (low ? (r.engine === 'whisper' ? ' → 다시 인식해도 단어가 적습니다. 녹음을 들어 보고, 실제로 말을 적게 했는지 발음이 불분명했는지 확인해 보세요.' : ' → 말한 양에 비해 인식된 단어가 적습니다. 일부가 인식에서 빠졌을 수 있으니 녹음을 들어 보고, 위의 ‘녹음으로 다시 인식’을 눌러 보세요. 점수도 이 때문에 낮게 나왔을 수 있습니다.') : '')));
+    }
     var weak = L.filter(function (c) { return c.status === 'bad' || c.status === 'mid'; }).length;
     var good = L.filter(function (c) { return c.status === 'ok'; }).length;
     b.appendChild(el('div', 'fbsum', '잘한 항목 ' + good + '개 · 보완할 항목 ' + weak + '개' + (weak ? ' (빨간색·주황색 항목부터 보세요)' : '')));
@@ -946,7 +999,7 @@
     c.appendChild(el('h3', '', '평가 결과 (ETS 평가 항목 기준 자체 진단 · 공식 점수 아님)'));
     var usable = rows.filter(function (r) { return r.ok; });
     if (!usable.length) {
-      c.appendChild(el('div', '', '음성 인식 결과가 없어 평가할 수 없습니다. Chrome에서 인터넷이 연결된 상태로, ‘자동 분석’을 켜고 시험을 봐 주세요. 안드로이드 폰이라면 첫 화면 ‘답변 기록 방식’을 ‘음성 인식만’으로 바꿔 보세요.'));
+      c.appendChild(el('div', '', '음성 인식 결과가 없어 평가할 수 없습니다. Chrome에서 인터넷이 연결된 상태로, ‘자동 분석’을 켜고 시험을 봐 주세요. 녹음이 있다면 각 문항의 ‘녹음으로 다시 인식’을 눌러 보세요. 안드로이드 폰이라면 첫 화면 ‘답변 기록 방식’을 ‘녹음 + 시험 후 폰 안에서 인식’으로 바꿔 보세요.'));
       return c;
     }
     if (usable.every(function (r) { return r.wc === 0; })) c.appendChild(el('div', 'miss', '모든 문항에서 말이 인식되지 않았습니다. 실제로 답을 했다면 음성 인식이 동작하지 않은 것이니 아래 결과는 무시하고, Chrome·인터넷 연결·마이크 권한을 확인한 뒤 다시 보세요.'));
